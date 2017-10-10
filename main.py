@@ -1,37 +1,79 @@
-#!/usr/bin/python
+"""
+USER NOTES
+==========
+
+This script is intended to be run from the right-click menu in OS X.
+
+To do this, it should be pasted into an Automator script.
+1. Launch the Automator application.
+2. Click Service to create a new right-click Service.
+3. Choose "files or folders" for "Service Receives Selected".
+4. Drag and drop "Run Shell Script" from the menu of options in the left panel.
+5. Choose "/usr/bin/python" for Shell.
+6. Choose "as arguments" for "Pass input".
+7. Paste this entire script into the text field.
+
+Save and close the Automator file.
+
+To run the script, right-click any text file containing the output of a BEVL or XBEVL run,
+and "bevl_sheetify" should appear as an option. Clicking it should result in a "sheetified"
+version of the file appearing on the user's desktop.
+
+
+USER PREFERENCES
+================
+
+Here are some preferences that the user can edit.
+"""
+
+# EMPTY_CELLS_ALLOWED may be set to either True or False.
+# with False, every cell in every row will be populated with a value;
+# with True, the report will look cleaner, because each new category of requirement only appears once.
+EMPTY_CELLS_ALLOWED = True
+
+# WORKING_DIRECTORY can be updated to any folder in the user's home directory
+# that they want the outfile to appear in.
+WORKING_DIRECTORY = 'Desktop'
+
+"""
+MAIN FUNCTIONS
+==============
+"""
+
 
 import os
 import re
 import csv
-import fileinput
-from sys import argv
+import sys
 
-TEST_MODE = False
+def parse_input(argv):
+    file_path = os.path.abspath(argv[1])
+    working_directory = os.path.dirname(file_path)
+    filename = file_path.split('/')[-1]
+    return working_directory, filename
 
-def read_csv(filename=None):
-    data = []
-    if len(argv) > 1:
-        filename = ' '.join(argv[1:])
-    elif TEST_MODE:
-        filename = 'sample.txt'
-    if filename:
-        with open(filename, 'r') as infile:
-            for line in infile:
-                data.append(line)
-    else:
-        for i, line in enumerate(fileinput.input()):
-            data.append(line)
-    return data
+def make_outfile_name(filename):
+    base = os.path.splitext(filename.split('/')[-1])[0]
+    outfile_name = os.path.expanduser('~/{}/{}-sheetified.csv'.format(WORKING_DIRECTORY, base))
+    i = 1
+    while os.path.exists(outfile_name):
+        outfile_name = os.path.expanduser('~/{}/{}-sheetified ({}).csv'.format(WORKING_DIRECTORY, base, i))
+        i += 1
+    return outfile_name
+
+def read_csv(filename):
+    with open(filename, 'r') as infile:
+        return [line for line in infile]
 
 class Audit:
 
     def __init__(self):
         self.requirements = []
 
-    def create_outfile(self, repetitive=False):
+    def create_outfile(self, filename, repetitive=EMPTY_CELLS_ALLOWED):
         headers = ['Requirement', 'Concentrate', 'Note', 'Subrequirement', 'Course Code', 'Course Name',
                    'Term Met', 'Grade', 'Credits']
-        with open('outfile.csv', 'w') as outfile:
+        with open(filename, 'w') as outfile:
             writer = csv.writer(outfile)
             writer.writerow(headers)
             last_vals = [None] * 8
@@ -122,13 +164,19 @@ def parse_lines(data):
 
 
 def main():
+    infile_name = sys.argv[1]
+
     print('parsing data in csv file...')
-    text = read_csv()
+    text = read_csv(infile_name)
+
     print('parsing records in data...')
     a = parse_lines(text)
+
     print('creating csv outfile...')
-    a.create_outfile()
-    print('csv outfile created.')
+    outfile_name = make_outfile_name(infile_name)
+    a.create_outfile(outfile_name)
+
+    print('csv outfile created ({})'.format(outfile_name))
 
 if __name__ == '__main__':
     main()
