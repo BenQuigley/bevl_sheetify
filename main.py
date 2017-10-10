@@ -69,7 +69,7 @@ class Audit:
     def __init__(self):
         self.requirements = []
 
-    def create_outfile(self, filename, repetitive=EMPTY_CELLS_ALLOWED):
+    def create_outfile(self, filename):
         headers = ['Requirement', 'Concentrate', 'Note', 'Subrequirement', 'Course Code', 'Course Name',
                    'Term Met', 'Grade', 'Credits']
         with open(filename, 'w') as outfile:
@@ -83,7 +83,7 @@ class Audit:
                             record = [r.name, c.name, c.note, s.name, course.name, course.full_name,
                                       course.term_met, course.grade, course.credits]
                             for i, val in enumerate(record[:4]):
-                                if repetitive == False and last_vals[i] == val:
+                                if EMPTY_CELLS_ALLOWED and last_vals[i] == val:
                                     record[i] = ''
                                 else:
                                     last_vals[i] = val
