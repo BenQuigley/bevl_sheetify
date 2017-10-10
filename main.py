@@ -36,10 +36,9 @@ EMPTY_CELLS_ALLOWED = True
 WORKING_DIRECTORY = 'Desktop'
 
 """
-MAIN FUNCTIONS
-==============
+MAIN PROGRAM CODE
+=================
 """
-
 
 import os
 import re
