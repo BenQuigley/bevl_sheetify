@@ -1,4 +1,4 @@
-BEVL Sheetify
+Degree Audit Sheetify
 =============
 A Python script that parses the output of Colleague's Degree Audit, formatting
 it as a spreadsheet.
