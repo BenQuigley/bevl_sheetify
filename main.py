@@ -2,6 +2,8 @@
 USER NOTES
 ==========
 
+The source code for this script is maintained at: https://github.com/BenQuigley/bevl_sheetify/blob/master/main.py
+
 This script is intended to be run from the right-click menu in OS X.
 
 To do this, it should be pasted into an Automator script.
