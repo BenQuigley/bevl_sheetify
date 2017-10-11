@@ -81,7 +81,8 @@ def parse_lines(outfile_name, data):
 
     # Initialize a blank record.
     headers = ['Requirement', 'Concentrate', 'Note', 'Subrequirement', 'Course Code', 'Course Name',
-               'Term Met', 'Grade', 'Credits']
+               'Term Met', 'Grade', 'Credits', 'Status']
+    course_specific_vals = headers[4:]
     record = o_dict([(val, '') for val in headers])
     last_vals_written = {val: '' for val in headers}
     with open(outfile_name, 'w') as outfile:
@@ -90,7 +91,7 @@ def parse_lines(outfile_name, data):
         for line in data:
 
             # Clear course-specific values:
-            for course_specific_val in ['Course Code', 'Course Name', 'Term Met', 'Grade', 'Credits']:
+            for course_specific_val in course_specific_vals:
                 record[course_specific_val] = ''
 
             # Identify any new requirements:
@@ -137,8 +138,6 @@ def parse_lines(outfile_name, data):
                 # Process new course.
 
                 full_name  = line[10:45]
-                # todo: include 'in progress' note
-                # todo: process credits remaining
 
                 record['Course Code'] = full_name.split(' ')[0]
                 course_name = ' '.join(full_name.split(' ')[1:])
@@ -146,10 +145,18 @@ def parse_lines(outfile_name, data):
                 record['Term Met'] = line[46:52]
                 record['Grade'] = line[55:57]
                 record['Credits'] = line[65:66]
+                record['Status'] = line[65:].split('*')[1].strip() if '*' in line[65:] else ''
+
+                # Handle the special requirement lines:
+                if record['Course Code'][:8] == '_' * 8:
+                    for course_specific_val in course_specific_vals:
+                        record[course_specific_val] = ''
+                    record['Course Code'] = 'Outstanding requirement:'
+                    record['Course Name'] = ' '.join(line[10:].split(' ')[1:]).strip()
 
                 record_to_write = []
                 for key, value in record.items():
-                    skippable = ['Requirement', 'Concentrate', 'Note', 'Subrequirement']
+                    skippable = headers[:4]
                     if EMPTY_CELLS_ALLOWED and key in skippable and value == last_vals_written[key]:
                         record_to_write.append('')
                     else:
