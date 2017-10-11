@@ -44,6 +44,7 @@ import os
 import re
 import csv
 import sys
+from collections import OrderedDict as o_dict
 
 def parse_input(argv):
     file_path = os.path.abspath(argv[1])
@@ -64,118 +65,112 @@ def read_csv(filename):
     with open(filename, 'r') as infile:
         return [line for line in infile]
 
-class Audit:
+def find_status(string):
+    statuses = ['C', 'I', 'N']
+    indeces = []
+    for s in statuses:
+        index = string.find('{})'.format(s))
+        if index >= 0:
+            indeces.append(index)
+    if indeces:
+        return min(indeces)
+    else:
+        return -1
 
-    def __init__(self):
-        self.requirements = []
+def parse_lines(outfile_name, data):
 
-    def create_outfile(self, filename):
-        headers = ['Requirement', 'Concentrate', 'Note', 'Subrequirement', 'Course Code', 'Course Name',
-                   'Term Met', 'Grade', 'Credits']
-        with open(filename, 'w') as outfile:
-            writer = csv.writer(outfile)
-            writer.writerow(headers)
-            last_vals = [None] * 8
-            for r in self.requirements:
-                for c in r.concentrates:
-                    for s in c.subrequirements:
-                        for course in s.courses:
-                            record = [r.name, c.name, c.note, s.name, course.name, course.full_name,
-                                      course.term_met, course.grade, course.credits]
-                            for i, val in enumerate(record[:4]):
-                                if EMPTY_CELLS_ALLOWED and last_vals[i] == val:
-                                    record[i] = ''
-                                else:
-                                    last_vals[i] = val
-                            writer.writerow(record)
+    # Initialize a blank record.
+    headers = ['Requirement', 'Concentrate', 'Note', 'Subrequirement', 'Course Code', 'Course Name',
+               'Term Met', 'Grade', 'Credits']
+    record = o_dict([(val, '') for val in headers])
+    last_vals_written = {val: '' for val in headers}
+    with open(outfile_name, 'w') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(headers)
+        for line in data:
 
-class Requirement:
-    def __init__(self, name):
-        self.name = name
-        self.concentrates = []
+            # Clear course-specific values:
+            for course_specific_val in ['Course Code', 'Course Name', 'Term Met', 'Grade', 'Credits']:
+                record[course_specific_val] = ''
 
-class Concentrate:
-    def __init__(self, name):
-        self.name = name
-        self.note = ''
-        self.subrequirements = []
+            # Identify any new requirements:
+            if find_status(line) == 0:
 
-class Subrequirement:
-    def __init__(self, number, name):
-        #if name[:5] != 'Group':
-        #    name = "Group {}: {}".format(number, name)
-        self.name = name
-        self.courses = []
+                # Process new requirement.
+                # Clear previous concentrate, concentrate note, and subrequirement values.
+                # Write nothing to outfile.
 
-class Course:
-    def __init__(self, full_name, term_met, grade, credits):
-        self.name = full_name.split(' ')[0]
-        self.full_name = ' '.join(full_name.split(' ')[1:])
-        self.full_name = re.sub(r'[\.]{4,}', '...', self.full_name) # Replace too-long ellipses with normal ones.
-        self.term_met = term_met
-        self.grade = grade
-        self.credits = credits
+                record['Requirement'] = line.split(':')[1].strip()
+                for val in ['Concentrate', 'Note', 'Subrequirement']:
+                    record[val] = ''
 
-def parse_lines(data):
-    audit = Audit()
-    requirement, concentrate, subrequirement, course = None, None, None, None
-    for line in data:
-        if line.find('C)') == 0:
-            # Add any previous requirement.
-            if requirement:
-                audit.requirements.append(requirement)
-            # Process new requirement.
-            name = line.split(':')[1].strip()
-            requirement = Requirement(name)
+            elif find_status(line) == 3:
 
-        elif line.find('C)') == 3:
-            # Add any previous concentrates in audit's previous requirement.
-            if concentrate:
-                requirement.concentrates.append(concentrate)
-            # Process new concentrate.
-            name = line.split(':')[1].strip()
-            concentrate = Concentrate(name)
+                # Process new concentrate.
+                # Clear previous concentrate note and subrequirement values.
+                # Write nothing to outfile.
 
-        elif line.find('>') == 6:
-            note_content = line.split('>')[1].strip()
-            concentrate.note += ' '+note_content
-            concentrate.note = concentrate.note.strip()
+                name = line.split(':')[1].strip()
+                record['Concentrate'] = name
+                for val in ['Note', 'Subrequirement']:
+                    record[val] = ''
 
-        elif line.find('C)') == 6:
-            # Add any previous courses in concentrate's previous subrequirement.
-            if subrequirement:
-                concentrate.subrequirements.append(subrequirement)
-            # Process new subrequirement.
-            name = line.split(')')[1].strip()
-            number = len(concentrate.subrequirements) + 1
-            subrequirement = Subrequirement(number, name)
+            elif line.find('>') == 6:
 
-        elif line[:10] == ' '*10 and line[10] != ' ':
-            # Process new course.
-            course = Course(full_name=line[10:45], term_met=line[46:52],
-                            grade=line[55:57], credits=line[65:66])
-            subrequirement.courses.append(course)
+                # Process new line of concentrate note.
+                # Clear no values.
+                # Write nothing to outfile.
 
-    # Add final requirement.
-    audit.requirements.append(requirement)
+                note_content = line.split('>')[1]
+                record['Note'] = '{} {}'.format(record['Note'], note_content).strip()
 
-    return audit
+            elif find_status(line) == 6:
+
+                # Process new subrequirement.
+                # Clear no values.
+                # Write nothing to outfile.
+                # Todo: make sure these get written in the event there are no courses listed.
+
+                record['Subrequirement'] = line.split(')')[1].strip()
+
+            elif line[:10] == ' '*10 and line[10] != ' ':
+
+                # Process new course.
+
+                full_name  = line[10:45]
+                record['Course Code'] = full_name.split(' ')[0]
+                record['Course Name'] = ' '.join(full_name.split(' ')[1:])
+                record['Course Name'] = re.sub(r'[\.]{4,}', '...', full_name)  # Replace too-long ellipses with normal ones.
+                record['Term Met'] = line[46:52]
+                record['Grade'] = line[55:57]
+                record['Credits'] = line[65:66]
+
+                record_to_write = []
+                for key, value in record.items():
+                    skippable = ['Requirement', 'Concentrate', 'Note', 'Subrequirement']
+                    if EMPTY_CELLS_ALLOWED and key in skippable and value == last_vals_written[key]:
+                        record_to_write.append('')
+                    else:
+                        last_vals_written[key] = value
+                        record_to_write.append(value)
+
+                writer.writerow(record_to_write)
 
 
 def main():
     infile_name = sys.argv[1]
+    outfile_name = make_outfile_name(infile_name)
 
     print('parsing data in csv file...')
     text = read_csv(infile_name)
 
     print('parsing records in data...')
-    a = parse_lines(text)
-
-    print('creating csv outfile...')
-    outfile_name = make_outfile_name(infile_name)
-    a.create_outfile(outfile_name)
+    parse_lines(outfile_name, text)
 
     print('csv outfile created ({})'.format(outfile_name))
+
+    if input('Open? [Y/n]\n>').strip().lower() != 'n':
+        os.system('open "{}"'.format(outfile_name))
 
 if __name__ == '__main__':
     main()
