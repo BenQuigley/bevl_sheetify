@@ -121,8 +121,7 @@ def parse_lines(outfile_name, data):
                 # Clear no values.
                 # Write nothing to outfile.
 
-                note_content = line.split('>')[1]
-                record['Note'] = '{} {}'.format(record['Note'], note_content).strip()
+                record['Note'] = (record['Note'] + line.split('>')[1]).strip()
 
             elif find_status(line) == 6:
 
@@ -138,6 +137,9 @@ def parse_lines(outfile_name, data):
                 # Process new course.
 
                 full_name  = line[10:45]
+                # todo: remove course code from course name
+                # todo: include 'in progress' note
+                # todo: process credits remaining
                 record['Course Code'] = full_name.split(' ')[0]
                 record['Course Name'] = ' '.join(full_name.split(' ')[1:])
                 record['Course Name'] = re.sub(r'[\.]{4,}', '...', full_name)  # Replace too-long ellipses with normal ones.
