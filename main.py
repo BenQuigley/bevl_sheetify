@@ -137,12 +137,12 @@ def parse_lines(outfile_name, data):
                 # Process new course.
 
                 full_name  = line[10:45]
-                # todo: remove course code from course name
                 # todo: include 'in progress' note
                 # todo: process credits remaining
+
                 record['Course Code'] = full_name.split(' ')[0]
-                record['Course Name'] = ' '.join(full_name.split(' ')[1:])
-                record['Course Name'] = re.sub(r'[\.]{4,}', '...', full_name)  # Replace too-long ellipses with normal ones.
+                course_name = ' '.join(full_name.split(' ')[1:])
+                record['Course Name'] = re.sub(r'[\.]{4,}', '...', course_name)  # Replace too-long ellipses with normal ones.
                 record['Term Met'] = line[46:52]
                 record['Grade'] = line[55:57]
                 record['Credits'] = line[65:66]
