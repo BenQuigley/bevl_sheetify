@@ -180,8 +180,5 @@ def main():
 
     print('csv outfile created ({})'.format(outfile_name))
 
-    if input('Open? [Y/n]\n>').strip().lower() != 'n':
-        os.system('open "{}"'.format(outfile_name))
-
 if __name__ == '__main__':
     main()
